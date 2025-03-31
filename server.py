@@ -1,11 +1,15 @@
 # server.py
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from geopy.distance import geodesic
+import pandas as pd
 import requests
 import os
 
 app = Flask(__name__)
 CORS(app)
+
+bars_df = pd.read_excel("bars.xlsx")
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
@@ -54,6 +58,34 @@ def get_directions():
 @app.route("/")
 def home():
     return "Backend Boire Facile OK"
+
+@app.route("/closest_bars", methods=["POST"])
+def get_closest_bars():
+    data = request.get_json()
+    lat = data.get("lat")
+    lon = data.get("lon")
+
+    if lat is None or lon is None:
+        return jsonify({"error": "Coordonnées manquantes"}), 400
+
+    # Calcul de la distance pour chaque bar
+    def compute_distance(row):
+        return geodesic((lat, lon), (row["latitude"], row["longitude"])).meters
+
+    bars_df["distance"] = bars_df.apply(compute_distance, axis=1)
+    closest = bars_df.sort_values("distance").head(3)
+
+    results = []
+    for _, row in closest.iterrows():
+        results.append({
+            "nom": row["Nom"],
+            "adresse": row["Adresse"],
+            "prix": row["Prix"],
+            "distance_m": round(row["distance"])
+        })
+
+    return jsonify({"bars": results})
+
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))  # Récupère le port fourni par Render
