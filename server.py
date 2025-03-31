@@ -62,13 +62,12 @@ def home():
 @app.route("/closest_bars", methods=["POST"])
 def get_closest_bars():
     data = request.get_json()
-    lat = data.get("lat")
-    lon = data.get("lon")
+    try:
+        lat = float(data.get("lat"))
+        lon = float(data.get("lon"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "Coordonnées invalides"}), 400
 
-    if lat is None or lon is None:
-        return jsonify({"error": "Coordonnées manquantes"}), 400
-
-    # Calcul de la distance pour chaque bar
     def compute_distance(row):
         return geodesic((lat, lon), (row["latitude"], row["longitude"])).meters
 
