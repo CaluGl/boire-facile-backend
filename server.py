@@ -100,6 +100,20 @@ def get_all_bars():
         })
     return jsonify({"bars": bars})
 
+sessions = {}
+
+@app.route("/save_participants", methods=["POST"])
+def save_participants():
+    data = request.get_json()
+    session_id = data.get("sessionId")
+    participants = data.get("participants", [])
+    sessions[session_id] = participants
+    return jsonify({"status": "saved"})
+
+@app.route("/get_participants")
+def get_participants():
+    session_id = request.args.get("id")
+    return jsonify({"participants": sessions.get(session_id, [])})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
