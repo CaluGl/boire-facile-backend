@@ -80,15 +80,27 @@ def get_closest_bars():
             "nom": row["Nom"],
             "adresse": row["Adresse"],
             "prix": row["Prix"],
-            "latitude": row["latitude"],  # <-- ajoute cette ligne
-            "longitude": row["longitude"],  # <-- et celle-ci
+            "latitude": row["latitude"],
+            "longitude": row["longitude"],
             "distance_m": round(row["distance"])
         })
 
-
     return jsonify({"bars": results})
+
+@app.route("/all_bars", methods=["GET"])
+def get_all_bars():
+    bars = []
+    for _, row in bars_df.iterrows():
+        bars.append({
+            "nom": row["Nom"],
+            "adresse": row["Adresse"],
+            "prix": row["Prix"],
+            "latitude": row["latitude"],
+            "longitude": row["longitude"]
+        })
+    return jsonify({"bars": bars})
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))  # Récupère le port fourni par Render
+    port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
