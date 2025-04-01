@@ -77,13 +77,13 @@ def get_closest_bars():
     results = []
     for _, row in closest.iterrows():
         results.append({
-    "nom": row["Nom"],
-    "adresse": row["Adresse"],
-    "prix": row["Prix"],
-    "distance_m": round(row["distance"]),
-    "latitude": row["latitude"],
-    "longitude": row["longitude"]
-})
+            "nom": row["Nom"],
+            "adresse": row["Adresse"],
+            "prix": row["Prix"],
+            "latitude": row["latitude"],  # <-- ajoute cette ligne
+            "longitude": row["longitude"],  # <-- et celle-ci
+            "distance_m": round(row["distance"])
+        })
 
 
     return jsonify({"bars": results})
