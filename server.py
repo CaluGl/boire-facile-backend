@@ -105,7 +105,8 @@ def get_all_bars():
             "adresse": row["Adresse"],
             "prix": row["Prix"],
             "latitude": row["latitude"],
-            "longitude": row["longitude"]
+            "longitude": row["longitude"],
+            "happy_hour": row.get("Happy Hour", "Non renseigné")
         })
     return jsonify({"bars": bars})
 
