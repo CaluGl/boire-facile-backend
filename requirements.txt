@@ -4,3 +4,4 @@ requests
 pandas
 openpyxl
 geopy
+psycopg2-binary
