@@ -1,10 +1,12 @@
 # server.py
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from geopy.distance import geodesic
 import pandas as pd
 import requests
 import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 CORS(app)
@@ -12,6 +14,11 @@ CORS(app)
 bars_df = pd.read_excel("bars.xlsx")
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+DATABASE_URL = os.getenv("DATABASE_URL")  # format: postgres://user:password@host:port/dbname
+
+# Connexion PostgreSQL
+def get_connection():
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 @app.route("/directions", methods=["POST"])
 def get_directions():
@@ -100,20 +107,41 @@ def get_all_bars():
         })
     return jsonify({"bars": bars})
 
-sessions = {}
-
 @app.route("/save_participants", methods=["POST"])
 def save_participants():
     data = request.get_json()
     session_id = data.get("sessionId")
     participants = data.get("participants", [])
-    sessions[session_id] = participants
-    return jsonify({"status": "saved"})
+
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM participants WHERE session_id = %s", (session_id,))
+        for p in participants:
+            cur.execute(
+                "INSERT INTO participants (session_id, name, address) VALUES (%s, %s, %s)",
+                (session_id, p.get("name"), p.get("address"))
+            )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"status": "saved"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/get_participants")
 def get_participants():
     session_id = request.args.get("id")
-    return jsonify({"participants": sessions.get(session_id, [])})
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT name, address FROM participants WHERE session_id = %s", (session_id,))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify({"participants": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
