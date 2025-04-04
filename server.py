@@ -87,12 +87,14 @@ def get_closest_bars():
             "nom": row["Nom"],
             "adresse": row["Adresse"],
             "prix": row["Prix"],
+            "happy_hour": row.get("Happy Hour", "Non renseigné"),
             "latitude": row["latitude"],
             "longitude": row["longitude"],
             "distance_m": round(row["distance"])
         })
 
     return jsonify({"bars": results})
+
 
 @app.route("/all_bars", methods=["GET"])
 def get_all_bars():
