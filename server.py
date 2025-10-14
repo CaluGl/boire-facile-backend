@@ -7,6 +7,7 @@ import requests
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import traceback
 
 app = Flask(__name__)
 CORS(app)
@@ -57,6 +58,45 @@ def init_db():
 # Initialize database when app starts
 init_db()
 
+@app.route("/")
+def home():
+    return "Backend Boire Facile OK"
+
+@app.route("/test")
+def test():
+    return jsonify({"status": "OK", "message": "Backend is working!"})
+
+@app.route("/debug")
+def debug():
+    return jsonify({
+        "python_version": os.environ.get("PYTHON_VERSION", "unknown"),
+        "port": os.environ.get("PORT", "unknown"),
+        "database_url_set": bool(os.environ.get("DATABASE_URL")),
+        "google_api_key_set": bool(os.environ.get("GOOGLE_API_KEY"))
+    })
+
+@app.route("/debug-db")
+def debug_db():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT version();")
+        version = cur.fetchone()
+        
+        # Check if participants table exists and has data
+        cur.execute("SELECT COUNT(*) as count FROM participants")
+        count = cur.fetchone()["count"]
+        
+        cur.close()
+        conn.close()
+        return jsonify({
+            "status": "connected", 
+            "postgres_version": version["version"],
+            "participants_count": count
+        })
+    except Exception as e:
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+
 @app.route("/directions", methods=["POST"])
 def get_directions():
     data = request.get_json()
@@ -97,12 +137,7 @@ def get_directions():
 
         return jsonify({"steps": steps, "duration": total_duration})
     except Exception as e:
-        print(f"❌ Directions error: {e}")
         return jsonify({"error": str(e)}), 500
-
-@app.route("/")
-def home():
-    return "Backend Boire Facile OK"
 
 @app.route("/closest_bars", methods=["POST"])
 def get_closest_bars():
@@ -134,7 +169,6 @@ def get_closest_bars():
 
         return jsonify({"bars": results})
     except Exception as e:
-        print(f"❌ Closest bars error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/all_bars", methods=["GET"])
@@ -152,14 +186,13 @@ def get_all_bars():
             })
         return jsonify({"bars": bars})
     except Exception as e:
-        print(f"❌ All bars error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/save_participants", methods=["POST"])
 def save_participants():
     try:
         data = request.get_json()
-        print(f"📦 Received data: {data}")  # Debug log
+        print(f"📦 Received data: {data}")
         
         if not data:
             return jsonify({"error": "No JSON data received"}), 400
@@ -172,11 +205,9 @@ def save_participants():
         conn = get_connection()
         cur = conn.cursor()
         
-        # Delete existing participants for this session
         cur.execute("DELETE FROM participants WHERE session_id = %s", (session_id,))
         print(f"🗑️ Deleted existing participants for session: {session_id}")
         
-        # Insert new participants
         for p in participants:
             cur.execute(
                 "INSERT INTO participants (session_id, name, address) VALUES (%s, %s, %s)",
@@ -193,9 +224,8 @@ def save_participants():
         
     except Exception as e:
         print(f"❌ Save participants error: {e}")
-        import traceback
         print(f"📋 Traceback: {traceback.format_exc()}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route("/get_participants")
 def get_participants():
@@ -215,36 +245,10 @@ def get_participants():
         
     except Exception as e:
         print(f"❌ Get participants error: {e}")
-        import traceback
         print(f"📋 Traceback: {traceback.format_exc()}")
-        return jsonify({"error": str(e)}), 500
-
-# Add a debug endpoint to check database
-@app.route("/debug-db")
-def debug_db():
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT version();")
-        version = cur.fetchone()
-        
-        # Check if participants table exists and has data
-        cur.execute("""
-            SELECT COUNT(*) as count FROM participants
-        """)
-        count = cur.fetchone()["count"]
-        
-        cur.close()
-        conn.close()
-        return jsonify({
-            "status": "connected", 
-            "postgres_version": version["version"],
-            "participants_count": count
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     print(f"🚀 Starting Flask app on port {port}")
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=False)
