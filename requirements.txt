@@ -5,3 +5,4 @@ pandas
 openpyxl
 geopy
 psycopg2-binary
+python-dotenv
