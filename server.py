@@ -24,9 +24,15 @@ except Exception as e:
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Database connection with error handling
+# VERCEL-SPECIFIC DATABASE CONNECTION
 def get_connection():
+    DATABASE_URL = os.getenv('DATABASE_URL')
+    
+    if not DATABASE_URL:
+        raise Exception("DATABASE_URL environment variable is not set")
+    
     try:
+        # Vercel provides DATABASE_URL in standard format
         conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
         print("✅ Database connection successful")
         return conn
@@ -60,20 +66,11 @@ init_db()
 
 @app.route("/")
 def home():
-    return "Backend Boire Facile OK"
+    return "Backend Boire Facile OK - Vercel"
 
 @app.route("/test")
 def test():
-    return jsonify({"status": "OK", "message": "Backend is working!"})
-
-@app.route("/debug")
-def debug():
-    return jsonify({
-        "python_version": os.environ.get("PYTHON_VERSION", "unknown"),
-        "port": os.environ.get("PORT", "unknown"),
-        "database_url_set": bool(os.environ.get("DATABASE_URL")),
-        "google_api_key_set": bool(os.environ.get("GOOGLE_API_KEY"))
-    })
+    return jsonify({"status": "OK", "message": "Vercel deployment working!"})
 
 @app.route("/debug-db")
 def debug_db():
@@ -97,6 +94,11 @@ def debug_db():
     except Exception as e:
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
+@app.route("/health")
+def health():
+    return jsonify({"status": "healthy", "service": "Boire Facile Backend"})
+
+# KEEP ALL YOUR EXISTING ROUTES (directions, closest_bars, etc.)
 @app.route("/directions", methods=["POST"])
 def get_directions():
     data = request.get_json()
@@ -248,7 +250,6 @@ def get_participants():
         print(f"📋 Traceback: {traceback.format_exc()}")
         return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
+# Vercel requires this - don't use app.run()
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    print(f"🚀 Starting Flask app on port {port}")
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(debug=False)
